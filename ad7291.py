@@ -67,3 +67,20 @@ class AD7291:
 
     def __init__(self, i2c: I2C, addr: int = _DEFAULT_ADDRESS) -> None:
         self.i2c_device = I2CDevice(i2c, addr)
+
+    def enable_channels(self, channels: int):
+        with self.i2c_device as i2c:
+            buf = bytearray(3)
+            # writes to address pointer register
+            # says to go to the command register
+            buf[0] = _COMMAND_REGISTER
+
+            # command register bit 15 - 8 determine enabled channels
+            # enable channels 0 - 4 with 0xF8 (11111000)
+            buf[1] = 0xF8
+
+            # bits 7 - 0 determine other things which aren't yet important
+            # can stay as 0x00
+            buf[2] = 0x00
+
+            i2c.write(buf)
