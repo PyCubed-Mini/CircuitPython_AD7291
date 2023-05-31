@@ -101,3 +101,15 @@ class AD7291:
 
         result = (res[0] << 8) + res[1]
         return result
+    
+    @property
+    def simple_low_read(self):
+        # same format as simple_high_read
+        res = bytearray(2)
+        with self.i2c_device as i2c:
+            buf = bytearray(1)
+            buf[0] = _CH0_DATA_LOW
+            i2c.write(buf)
+
+            i2c.readinto(res)
+        return (res[0] << 8) + res[1]
