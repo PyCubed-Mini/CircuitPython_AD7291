@@ -84,3 +84,20 @@ class AD7291:
             buf[2] = 0x00
 
             i2c.write(buf)
+
+    @property
+    def simple_high_read(self):
+        res = bytearray(2)
+        with self.i2c_device as i2c:
+            buf = bytearray(1)
+            # writes to address pointer the register we want
+            # we want CH0 data high
+            buf[0] = _CH0_DATA_HIGH
+            i2c.write(buf)
+
+            # should set self.buf to the 16 bits it reads
+            # from the CH0 DATA high register
+            i2c.readinto(res)
+
+        result = (res[0] << 8) + res[1]
+        return result
