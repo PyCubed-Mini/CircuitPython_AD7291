@@ -113,3 +113,28 @@ class AD7291:
 
             i2c.readinto(res)
         return (res[0] << 8) + res[1]
+
+    @property
+    def simple_voltage_read(self):
+        # same format as above 3 functions
+        res = bytearray(2)
+        with self.i2c_device as i2c:
+            buf = bytearray(1)
+            buf[0] = _VOLTAGE_CONVERSION
+            i2c.write(buf)
+
+            i2c.readinto(res)
+
+        result = (res[0] >> 4, ((res[0] & 0x0F) << 8) + res[1])
+        return result
+
+    @property
+    def simple_temp_read(self):
+        res = bytearray(2)
+        with self.i2c_device as i2c:
+            buf = bytearray(1)
+            buf[0] = _T_SENSE_CONVERSION_RESULT
+            i2c.write(buf)
+
+            i2c.readinto(res)
+        return (res[0] >> 4, res[1])
