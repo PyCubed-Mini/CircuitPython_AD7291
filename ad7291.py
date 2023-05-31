@@ -101,7 +101,7 @@ class AD7291:
 
         result = (res[0] << 8) + res[1]
         return result
-    
+
     @property
     def simple_low_read(self):
         # same format as simple_high_read
