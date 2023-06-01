@@ -115,7 +115,7 @@ class AD7291:
         return result & ((i << 8) - 1)
 
     @property
-    def read_voltage(self):
+    def read_from_voltage(self):
         """Initialize return list"""
         res = [None] * self.num_active_channels
 

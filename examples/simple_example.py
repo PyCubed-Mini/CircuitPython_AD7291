@@ -17,5 +17,5 @@ ad = ad7291.AD7291(i2c, number_of_active_channels=1,
                                     False, False])
 
 while True:
-    print(ad.read_voltage)
+    print(ad.read_from_voltage)
     time.sleep(1)
