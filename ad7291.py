@@ -62,8 +62,6 @@ class AD7291:
     """Driver for the AD7291 SAR ADC"""
 
     # command register bits as shown on page 17 of datasheet
-    active_channels = RWBits(8, _COMMAND_REGISTER, 8,
-                             register_width=2, lsb_first=False)
     tsense = RWBit(_COMMAND_REGISTER, 7, register_width=2,
                    lsb_first=False)
     noise_delay = RWBit(_COMMAND_REGISTER, 5, register_width=2,
@@ -90,16 +88,26 @@ class AD7291:
         """
         self.i2c_device = I2CDevice(i2c, addr)
 
+        self.active_channels = active_channels
         """
         set the channel bits in the command register to correspond
         with the active_channels list
         """
+        tempbuf = bytearray(3)
+        print(self.channel_list_to_bits(active_channels))
+        with self.i2c_device as device:
+            tempbuf[0] = _COMMAND_REGISTER
+            tempbuf[1] = self.channel_list_to_bits(active_channels)
+            tempbuf[2] = 0x00
+
+            device.write(tempbuf)
+
         self.channels = self.channel_list_to_bits(active_channels)
         self.tsense = enable_temp_conversions
+        self.buf = bytearray(2)
 
         # initialize a buffer to interact with i2c
         self.num_active_channels = number_of_active_channels
-        self.buf = bytearray(2)
 
     def channel_list_to_bits(self, channel_list: list = [False] * 8) -> int:
         """
@@ -118,29 +126,26 @@ class AD7291:
         """Initialize return list"""
         res = [None] * self.num_active_channels
 
-        """want to read from the voltage conversion register"""
         self.buf[0] = _VOLTAGE_CONVERSION
 
-        # writes to buffer that we want the voltage conversion register
         with self.i2c_device as i2c:
             i2c.write(self.buf, end=1)
-
         """
         Voltages are returned sequentially, so we readinto for
         each channel we have activated.
-
-        Not Currently working, not sure why. Only reads one channel
         """
-        for i in range(self.num_active_channels):
-            with self.i2c_device as i2c:
-                i2c.readinto(self.buf)
 
-            # the channel that the voltage in is coming from
-            channel = self.buf[0] >> 4 & ((1 << 4) - 1)  # D[15:12]
+        tempbuf = bytearray(2 * self.num_active_channels)
+        with self.i2c_device as i2c:
+            i2c.readinto(tempbuf)
+
+        for i in range(0, 2 * self.num_active_channels, 2):
+            channel = (tempbuf[i] >> 4) & ((1 << 4) - 1)  # D[15:12]
 
             # the conversion from the voltage read
-            voltage = (self.buf[0] & ((1 << 4) - 1))     # D[11:8]
+            voltage = (tempbuf[i]) & ((1 << 4) - 1)     # D[11:8]
             voltage << 8                                 # shift to make room
-            voltage += self.buf[1]                       # D[7-0]
-            res[i] = (channel, voltage)
+            voltage += tempbuf[i + 1]                       # D[7-0]
+            res[int(i/2)] = (channel, voltage)
+
         return res
