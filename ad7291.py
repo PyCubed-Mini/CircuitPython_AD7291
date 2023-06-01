@@ -29,7 +29,7 @@ except ImportError:
 __version__ = "0.0.1"
 __repo__ = "https://github.com/PyCubed-Mini/CircuitPython_AD7291.git"
 
-# data registers
+# data registers as shown on page 16 of datasheet
 _COMMAND_REGISTER = 0x00
 _VOLTAGE_CONVERSION = 0x01
 _T_SENSE_CONVERSION_RESULT = 0x02
@@ -57,30 +57,22 @@ _T_SENSE_DATA_LOW = 0x1D
 
 _DEFAULT_ADDRESS = 0x2F
 
-# Command Register
-# 16 bits, 15-8 are CH0 to CH7,
-
 
 class AD7291:
     """Driver for the AD7291 SAR ADC"""
 
-    # command register as shown in the table
-    # RWBits(num_bits, register_address, lowest_bit, register_width=1,
-    #        lsb_first=True)
-
+    # command register bits as shown on page 17 of datasheet
     active_channels = RWBits(8, _COMMAND_REGISTER, 8,
                              register_width=2, lsb_first=False)
     tsense = RWBit(_COMMAND_REGISTER, 7, register_width=2,
                    lsb_first=False)
     noise_dealy = RWBit(_COMMAND_REGISTER, 5, register_width=2,
-                        lsb_frist=False)
+                        lsb_first=False)
 
     def __init__(self, i2c: I2C, addr: int = _DEFAULT_ADDRESS,
                  number_of_active_channels: int = 0,
                  active_channels: list = [False] * 8,
                  enable_temp_conversions: bool = False) -> None:
-
-        self.i2c_device = I2CDevice(i2c, addr)
         """
         convert bool list to integer representing which channels
         should be active
@@ -92,7 +84,15 @@ class AD7291:
         addr: the i2c address of the ad7291 in your hardware
 
         active_channels: a bool list of length 8 representing which
-        voltage input channels of the ad7291 should be read.
+        voltage input channels of the ad7291 should be read. Index
+        in this list corresponds to channel number. Index 0 is CH0,
+        index 1 is CH1 and so on
+        """
+        self.i2c_device = I2CDevice(i2c, addr)
+
+        """
+        set the channel bits in the command register to correspond
+        with the active_channels list
         """
         self.channels = self.channel_list_to_bits(active_channels)
         self.tsense = enable_temp_conversions
@@ -101,7 +101,7 @@ class AD7291:
         self.num_active_channels = number_of_active_channels
         self.buf = bytearray(2)
 
-    def channel_list_to_bits(channel_list: list = [False] * 8) -> int:
+    def channel_list_to_bits(self, channel_list: list = [False] * 8) -> int:
         """
         takes the input list, should be a bool list, and converts it
         into an integer that will be passed into bits D15-D8 of
@@ -110,8 +110,7 @@ class AD7291:
         result = 0
         for i, channel in enumerate(channel_list):
             if channel:
-
-                result += 1 << i
+                result += 1 << i        # set ith channel bit to 1
         return result & ((i << 8) - 1)
 
     @property
