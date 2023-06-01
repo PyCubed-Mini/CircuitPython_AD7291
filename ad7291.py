@@ -17,12 +17,11 @@ from micropython import const
 from adafruit_bus_device.i2c_device import I2CDevice
 
 from adafruit_register.i2c_struct import Struct, UnaryStruct
-from adafruit_register.i2c_bits import RWBits
+from adafruit_register.i2c_bits import ROBits, RWBits
 from adafruit_register.i2c_bit import ROBit, RWBit
 
 try:
     import typing
-    from typing_extensions import Literal
     from busio import I2C
 except ImportError:
     pass
@@ -65,76 +64,84 @@ _DEFAULT_ADDRESS = 0x2F
 class AD7291:
     """Driver for the AD7291 SAR ADC"""
 
-    def __init__(self, i2c: I2C, addr: int = _DEFAULT_ADDRESS) -> None:
+    # command register as shown in the table
+    # RWBits(num_bits, register_address, lowest_bit, register_width=1,
+    #        lsb_first=True)
+
+    active_channels = RWBits(8, _COMMAND_REGISTER, 8,
+                             register_width=2, lsb_first=False)
+    tsense = RWBit(_COMMAND_REGISTER, 7, register_width=2,
+                   lsb_first=False)
+    noise_dealy = RWBit(_COMMAND_REGISTER, 5, register_width=2,
+                        lsb_frist=False)
+
+    def __init__(self, i2c: I2C, addr: int = _DEFAULT_ADDRESS,
+                 number_of_active_channels: int = 0,
+                 active_channels: list = [False] * 8,
+                 enable_temp_conversions: bool = False) -> None:
+
         self.i2c_device = I2CDevice(i2c, addr)
+        """
+        convert bool list to integer representing which channels
+        should be active
 
-    def enable_channels(self, channels: int):
-        with self.i2c_device as i2c:
-            buf = bytearray(3)
-            # writes to address pointer register
-            # says to go to the command register
-            buf[0] = _COMMAND_REGISTER
+        Properties
+        -----------------
 
-            # command register bit 15 - 8 determine enabled channels
-            # enable channels 0 - 4 with 0xF8 (11111000)
-            buf[1] = 0xF8
+        i2c: the i2c bus being used
+        addr: the i2c address of the ad7291 in your hardware
 
-            # bits 7 - 0 determine other things which aren't yet important
-            # can stay as 0x00
-            buf[2] = 0x00
+        active_channels: a bool list of length 8 representing which
+        voltage input channels of the ad7291 should be read.
+        """
+        self.channels = self.channel_list_to_bits(active_channels)
+        self.tsense = enable_temp_conversions
 
-            i2c.write(buf)
+        # initialize a buffer to interact with i2c
+        self.num_active_channels = number_of_active_channels
+        self.buf = bytearray(2)
 
-    @property
-    def simple_high_read(self):
-        res = bytearray(2)
-        with self.i2c_device as i2c:
-            buf = bytearray(1)
-            # writes to address pointer the register we want
-            # we want CH0 data high
-            buf[0] = _CH0_DATA_HIGH
-            i2c.write(buf)
+    def channel_list_to_bits(channel_list: list = [False] * 8) -> int:
+        """
+        takes the input list, should be a bool list, and converts it
+        into an integer that will be passed into bits D15-D8 of
+        command register
+        """
+        result = 0
+        for i, channel in enumerate(channel_list):
+            if channel:
 
-            # should set self.buf to the 16 bits it reads
-            # from the CH0 DATA high register
-            i2c.readinto(res)
-
-        result = (res[0] << 8) + res[1]
-        return result
+                result += 1 << i
+        return result & ((i << 8) - 1)
 
     @property
-    def simple_low_read(self):
-        # same format as simple_high_read
-        res = bytearray(2)
+    def read_voltage(self):
+        """Initialize return list"""
+        res = [None] * self.num_active_channels
+
+        """want to read from the voltage conversion register"""
+        self.buf[0] = _VOLTAGE_CONVERSION
+
+        # writes to buffer that we want the voltage conversion register
         with self.i2c_device as i2c:
-            buf = bytearray(1)
-            buf[0] = _CH0_DATA_LOW
-            i2c.write(buf)
+            i2c.write(self.buf, end=1)
 
-            i2c.readinto(res)
-        return (res[0] << 8) + res[1]
+        """
+        Voltages are returned sequentially, so we readinto for
+        each channel we have activated.
 
-    @property
-    def simple_voltage_read(self):
-        # same format as above 3 functions
-        res = bytearray(2)
-        with self.i2c_device as i2c:
-            buf = bytearray(1)
-            buf[0] = _VOLTAGE_CONVERSION
-            i2c.write(buf)
+        Not Currently working, not sure why. Only reads one channel
+        """
+        for i in range(self.num_active_channels):
+            with self.i2c_device as i2c:
+                i2c.readinto(self.buf)
 
-            i2c.readinto(res)
+            # the channel that the voltage in is coming from
+            channel = self.buf[0] >> 4 & ((1 << 4) - 1)  # D[15:12]
 
-        result = (res[0] >> 4, ((res[0] & 0x0F) << 8) + res[1])
-        return result
-
-    @property
-    def simple_temp_read(self):
-        res = bytearray(2)
-        with self.i2c_device as i2c:
-            buf = bytearray(1)
-            buf[0] = _T_SENSE_CONVERSION_RESULT
-            i2c.write(buf)
-
-            i2c.readinto(res)
-        return (res[0] >> 4, res[1])
+            # the conversion from the voltage read
+            voltage = (self.buf[0] & ((1 << 4) - 1))     # D[11:8]
+            voltage << 8                                 # shift to make room
+            voltage += self.buf[1]                       # D[7-0]
+            res[i] = (channel, voltage)
+        return res
