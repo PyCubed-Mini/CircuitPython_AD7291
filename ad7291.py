@@ -66,7 +66,7 @@ class AD7291:
                              register_width=2, lsb_first=False)
     tsense = RWBit(_COMMAND_REGISTER, 7, register_width=2,
                    lsb_first=False)
-    noise_dealy = RWBit(_COMMAND_REGISTER, 5, register_width=2,
+    noise_delay = RWBit(_COMMAND_REGISTER, 5, register_width=2,
                         lsb_first=False)
 
     def __init__(self, i2c: I2C, addr: int = _DEFAULT_ADDRESS,
@@ -110,7 +110,7 @@ class AD7291:
         result = 0
         for i, channel in enumerate(channel_list):
             if channel:
-                result += 1 << i        # set ith channel bit to 1
+                result += 1 << (7 - i)        # set ith channel bit to 1
         return result & ((i << 8) - 1)
 
     @property
