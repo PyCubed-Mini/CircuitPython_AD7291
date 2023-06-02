@@ -61,16 +61,11 @@ _DEFAULT_ADDRESS = 0x2F
 class AD7291:
     """Driver for the AD7291 SAR ADC"""
 
-    # command register bits as shown on page 17 of datasheet
-    tsense = RWBit(_COMMAND_REGISTER, 7, register_width=2,
-                   lsb_first=False)
-    noise_delay = RWBit(_COMMAND_REGISTER, 5, register_width=2,
-                        lsb_first=False)
-
     def __init__(self, i2c: I2C, addr: int = _DEFAULT_ADDRESS,
                  number_of_active_channels: int = 0,
                  active_channels: list = [False] * 8,
-                 enable_temp_conversions: bool = False) -> None:
+                 enable_temp_conversions: bool = False,
+                 enable_noise_delay: bool = False) -> None:
         """
         convert bool list to integer representing which channels
         should be active
@@ -93,21 +88,20 @@ class AD7291:
         set the channel bits in the command register to correspond
         with the active_channels list
         """
-        tempbuf = bytearray(3)
-        print(self.channel_list_to_bits(active_channels))
-        with self.i2c_device as device:
-            tempbuf[0] = _COMMAND_REGISTER
-            tempbuf[1] = self.channel_list_to_bits(active_channels)
-            tempbuf[2] = 0x00
-
-            device.write(tempbuf)
 
         self.channels = self.channel_list_to_bits(active_channels)
         self.tsense = enable_temp_conversions
-        self.buf = bytearray(2)
-
-        # initialize a buffer to interact with i2c
         self.num_active_channels = number_of_active_channels
+
+        # initialize a buffer to interact with ADC
+        self.buf = bytearray(2 * self.num_active_channels)
+
+        with self.i2c_device as device:
+            self.buf[0] = _COMMAND_REGISTER
+            self.buf[1] = self.channels
+            self.buf[2] = 0x00
+
+            device.write(self.buf, end=3)
 
     def channel_list_to_bits(self, channel_list: list = [False] * 8) -> int:
         """
@@ -130,22 +124,26 @@ class AD7291:
 
         with self.i2c_device as i2c:
             i2c.write(self.buf, end=1)
-        """
-        Voltages are returned sequentially, so we readinto for
-        each channel we have activated.
-        """
 
-        tempbuf = bytearray(2 * self.num_active_channels)
+        """
+        Voltages are returned sequentially, so we readinto using our
+        entire buffer of (2 * num_active_channel) bytes
+        """
         with self.i2c_device as i2c:
-            i2c.readinto(tempbuf)
+            i2c.readinto(self.buf)
 
+        """
+        For each 2 byte sequence, we first get bits 15-12 which represent the
+        channel address, we then get bits 11-0 which represent the converted
+        voltage read.
+        """
         for i in range(0, 2 * self.num_active_channels, 2):
-            channel = (tempbuf[i] >> 4) & ((1 << 4) - 1)  # D[15:12]
+            channel = (self.buf[i] >> 4) & ((1 << 4) - 1)  # D[15:12]
 
             # the conversion from the voltage read
-            voltage = (tempbuf[i]) & ((1 << 4) - 1)     # D[11:8]
+            voltage = (self.buf[i]) & ((1 << 4) - 1)     # D[11:8]
             voltage << 8                                 # shift to make room
-            voltage += tempbuf[i + 1]                       # D[7-0]
+            voltage += self.buf[i + 1]                       # D[7-0]
             res[int(i/2)] = (channel, voltage)
 
         return res
