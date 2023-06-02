@@ -91,15 +91,23 @@ class AD7291:
 
         self.channels = self.channel_list_to_bits(active_channels)
         self.tsense = enable_temp_conversions
+        self.noise = enable_noise_delay
         self.num_active_channels = number_of_active_channels
 
-        # initialize a buffer to interact with ADC
+        self.settings = 0x00
+        if self.tsense:
+            print("tsense enabled")
+            self.settings += 1 << 7
+        if self.noise:
+            self.settings += 1 << 5
+
+        # initialize a buffer to interact with i2c
         self.buf = bytearray(2 * self.num_active_channels)
 
         with self.i2c_device as device:
             self.buf[0] = _COMMAND_REGISTER
             self.buf[1] = self.channels
-            self.buf[2] = 0x00
+            self.buf[2] = self.settings
 
             device.write(self.buf, end=3)
 
@@ -138,12 +146,44 @@ class AD7291:
         voltage read.
         """
         for i in range(0, 2 * self.num_active_channels, 2):
-            channel = (self.buf[i] >> 4) & ((1 << 4) - 1)  # D[15:12]
+            channel = (self.buf[i] >> 4) & ((1 << 4) - 1)    # D[12:16]
+            if not 0 <= channel <= 7:
+                BufferError("Channel returned is not a voltage channel (0-7)")
 
             # the conversion from the voltage read
-            voltage = (self.buf[i]) & ((1 << 4) - 1)     # D[11:8]
-            voltage << 8                                 # shift to make room
-            voltage += self.buf[i + 1]                       # D[7-0]
+            voltage = (self.buf[i]) & ((1 << 4) - 1)         # D[8:12]
+            voltage << 8                                     # shift to make room
+            voltage += self.buf[i + 1]                       # D[0:8]
             res[int(i/2)] = (channel, voltage)
 
         return res
+
+    @property
+    def read_temperature_conversion(self):
+        """
+        Reads the latest temperature conversion off of the temperatuve
+        conversion register. Temperature conversions are done every ~5ms
+        so it is not gauranteed to be a new measurement if retrieved
+        multiple times within a 5ms window.
+        """
+        if not self.settings >> 7:
+            BufferError("Temperature sensor not enabled")
+
+        self.buf[0] = _T_SENSE_CONVERSION_RESULT
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        channel = (self.buf[0] >> 4) & ((1 << 4) - 1)   # D[12:16]
+        if (channel != 8):
+            BufferError("Channel returned is not Temperature Channel (8)")
+
+        temperature = (self.buf[0]) & ((1 << 4) - 1)    # D[8:12]
+        temperature << 8                                # shifts
+        temperature += self.buf[1]                      # D[0:8]
+
+        if temperature > 4096:
+            return (4096 - temperature)/4
+        else:
+            return temperature/4
