@@ -187,3 +187,13 @@ class AD7291:
             return (4096 - temperature)/4
         else:
             return temperature/4
+
+    @property
+    def read_avg_temperature(self):
+        """
+        Reads from the temperature average register. This register updates
+        after every temperature conversion and gets the average temperature
+        of the ADC since boot.
+        """
+
+        pass
