@@ -123,6 +123,12 @@ class AD7291:
                 result += 1 << (7 - i)        # set ith channel bit to 1
         return result & ((i << 8) - 1)
 
+    def set_channel_upper_limit(self, channel: int, limit: int):
+        pass
+
+    def set_channel_lower_limit(self, channel: int, limit: int):
+        pass
+
     @property
     def read_from_voltage(self):
         """Initialize return list"""
