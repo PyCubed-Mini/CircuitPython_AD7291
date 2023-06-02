@@ -192,8 +192,10 @@ class AD7291:
     def read_avg_temperature(self):
         """
         Reads from the temperature average register. This register updates
-        after every temperature conversion and gets the average temperature
-        of the ADC since boot.
+        after every temperature conversion and gets a moving average of the ADC
+
+        The sensor uses the equation:
+            AVG = 0.875 * (Previous Average Result) + 0.125 * (Current Result)
         """
 
         if not self.settings >> 7:
