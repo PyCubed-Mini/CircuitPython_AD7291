@@ -187,3 +187,11 @@ class AD7291:
             return (4096 - temperature)/4
         else:
             return temperature/4
+
+    @property
+    def read_channel_alert(self):
+        pass
+
+    @property
+    def read_temp_alert(self):
+        pass
