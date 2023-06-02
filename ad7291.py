@@ -196,4 +196,24 @@ class AD7291:
         of the ADC since boot.
         """
 
-        pass
+        if not self.settings >> 7:
+            BufferError("Temperature sensor not enabled")
+
+        self.buf[0] = _T_SENSE_AVERAGE_RESULT
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        channel = (self.buf[0] >> 4) & ((1 << 4) - 1)
+        if channel != 9:
+            BufferError("Channel returned is not Avg Temperature channel")
+
+        temperature = self.buf[0] & ((1 << 4) - 1)
+        temperature << 8
+        temperature += self.buf[1]
+
+        if temperature > 4096:
+            return (4096 - temperature) / 4
+        else:
+            return temperature / 4
