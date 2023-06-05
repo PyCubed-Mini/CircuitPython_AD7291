@@ -132,7 +132,7 @@ class AD7291:
                 result += 1 << (7 - i)        # set ith channel bit to 1
         return result & ((i << 8) - 1)
 
-    def get_channel_limit(self,
+    def get_channel(self,
                           channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
                           polarity: Literal["low", "high"]):
         match polarity:
@@ -212,6 +212,38 @@ class AD7291:
 
         with self.i2c_device as i2c:
             i2c.write(self.buf, end=2)
+
+    def get_channel_limits(self, 
+                           channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8]
+                           ) -> tuple:
+        """
+        reads from the data high and low regoisters for a channel. Is returned
+        in a tuple of (DATA_LOW, DATA_HIGH).
+        """
+
+        ch_high = self.get_channel(channel, "high")
+        ch_low = self.get_channel(channel, "low")
+
+        # read from the high channel
+        self.buf[0] = ch_high
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        # convert reading to a value
+        high = (self.buf[0] << 8) + self.buf[1]
+
+        # read from the low channel
+        self.buf[0] = ch_low
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        # convert reading to a value
+        low = (self.buf[0] << 8) + self.buf[1]
+        return (low, high)
 
     @property
     def read_from_voltage(self):
