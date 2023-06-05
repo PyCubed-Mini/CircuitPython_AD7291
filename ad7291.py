@@ -246,7 +246,7 @@ class AD7291:
         =====================================================================
         D3              | D2                | D1            | D0            |
         ---------------------------------------------------------------------
-        TSENSE_AVG LOW  | TSENSE_AVG HIGH   | TSENSE LOW    | TSENSE HIGH   |
+        TSENSE_AVG HIGH | TSENSE_AVG LOW    | TSENSE HIGH   | TSENSE LOW    |
         """
 
         self.buf[0] = _ALERT_B
@@ -256,3 +256,25 @@ class AD7291:
             i2c.readinto(self.buf, end=2)
 
         return ((self.buf[0] << 8) + self.buf[1]) & ((1 << 16) - 1)
+
+    @property
+    def clear_alert_registers(self) -> None:
+        self.buf[0] = _COMMAND_REGISTER
+        self.buf[1] = self.channels
+
+        # flip bit D2 of command register to 1
+        self.settings = self.settings ^ (1 << 2)
+        self.buf[2] = self.settings
+
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=3)
+
+        # flip bit D2 back to 0
+        self.settings = self.settings ^ (1 << 2)
+
+        self.buf[0] = _COMMAND_REGISTER
+        self.buf[1] = self.channels
+        self.buf[2] = self.settings
+
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=3)
