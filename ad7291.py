@@ -228,5 +228,31 @@ class AD7291:
         return ((self.buf[0] << 8) + self.buf[1]) & ((1 << 16) - 1)
 
     @property
-    def read_temp_alert(self):
-        pass
+    def read_temp_alert(self) -> int:
+        """
+        Reads from Alert Register B to get information about the alert
+        that has occured. Only gives information about the temperature
+        sensor.
+
+        TSENSE*_LOW means the average temperature has subceeded the limit
+        set by the TSENSE*_LOW register.
+
+        TSENSE*_HIGH means the average temperature has exceeded the limit
+        set by the TSENSE*_HIGH register.
+
+        D[4-16]     |
+        -------------
+        0           |
+        =====================================================================
+        D3              | D2                | D1            | D0            |
+        ---------------------------------------------------------------------
+        TSENSE_AVG LOW  | TSENSE_AVG HIGH   | TSENSE LOW    | TSENSE HIGH   |
+        """
+
+        self.buf[0] = _ALERT_B
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        return ((self.buf[0] << 8) + self.buf[1]) & ((1 << 16) - 1)
