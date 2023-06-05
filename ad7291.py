@@ -23,6 +23,7 @@ from adafruit_register.i2c_bit import ROBit, RWBit
 try:
     import typing
     from busio import I2C
+    from typing_extensions import Literal
 except ImportError:
     pass
 
@@ -131,11 +132,86 @@ class AD7291:
                 result += 1 << (7 - i)        # set ith channel bit to 1
         return result & ((i << 8) - 1)
 
-    def set_channel_upper_limit(self, channel: int, limit: int):
-        pass
+    def get_channel_limit(self,
+                          channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
+                          polarity: Literal["low", "high"]):
+        match polarity:
+            case "low":
+                match channel:
+                    case 0:
+                        self.buf[0] = _CH0_DATA_LOW
+                    case 1:
+                        self.buf[0] = _CH1_DATA_LOW
+                    case 2:
+                        self.buf[0] = _CH2_DATA_LOW
+                    case 3:
+                        self.buf[0] = _CH3_DATA_LOW
+                    case 4:
+                        self.buf[0] = _CH4_DATA_LOW
+                    case 5:
+                        self.buf[0] = _CH5_DATA_LOW
+                    case 6:
+                        self.buf[0] = _CH6_DATA_LOW
+                    case 7:
+                        self.buf[0] = _CH7_DATA_LOW
+                    case 8:
+                        self.buf[0] = _T_SENSE_DATA_LOW
+            case "high":
+                match channel:
+                    case 0:
+                        self.buf[0] = _CH0_DATA_HIGH
+                    case 1:
+                        self.buf[0] = _CH1_DATA_HIGH
+                    case 2:
+                        self.buf[0] = _CH2_DATA_HIGH
+                    case 3:
+                        self.buf[0] = _CH3_DATA_HIGH
+                    case 4:
+                        self.buf[0] = _CH4_DATA_HIGH
+                    case 5:
+                        self.buf[0] = _CH5_DATA_HIGH
+                    case 6:
+                        self.buf[0] = _CH6_DATA_HIGH
+                    case 7:
+                        self.buf[0] = _CH7_DATA_HIGH
+                    case 8:
+                        self.buf[0] = _T_SENSE_DATA_HIGH
 
-    def set_channel_lower_limit(self, channel: int, limit: int):
-        pass
+    def set_channel_upper_limit(self,
+                                channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
+                                value: int) -> None:
+        if 0 <= channel <= 8:
+            BufferError("invalid channel")
+        if 0 <= value <= (1 << 12) - 1:
+            BufferError("invalid limit")
+
+        # get the channel we want to use
+        self.get_channel_limit(channel, "high")
+
+        # set the buffer to be the value
+        self.buf[1] = (value >> 8) & ((1 << 8) - 1)
+        self.buf[2] = value & ((1 << 8) - 1)
+
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=3)
+
+    def set_channel_lower_limit(self,
+                                channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
+                                value: int) -> None:
+        if 0 <= channel <= 8:
+            BufferError("invalid channel")
+        if 0 <= value <= (1 << 12) - 1:
+            BufferError("invalid limit")
+
+        # get desired channel
+        self.get_channel_limit(channel, "low")
+
+        # set the buffer to input value
+        self.buf[1] = (value >> 8) & ((1 << 8) - 1)
+        self.buf[2] = value & ((1 << 8) - 1)
+
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=2)
 
     @property
     def read_from_voltage(self):
@@ -201,9 +277,3 @@ class AD7291:
             return (4096 - temperature)/4
         else:
             return temperature/4
-
-    def set_channel_low(self, channel: int, value: int) -> None:
-        pass
-
-    def set_channel_high(self, channel: int, value: int) -> None:
-        pass
