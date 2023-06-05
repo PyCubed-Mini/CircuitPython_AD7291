@@ -13,15 +13,15 @@ Implementation Notes
 * Adafruit's bys Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
 """
 
-from micropython import const
 from adafruit_bus_device.i2c_device import I2CDevice
-
-from adafruit_register.i2c_struct import Struct, UnaryStruct
-from adafruit_register.i2c_bits import ROBits, RWBits
 from adafruit_register.i2c_bit import ROBit, RWBit
+from adafruit_register.i2c_bits import ROBits, RWBits
+from adafruit_register.i2c_struct import Struct, UnaryStruct
+from micropython import const
 
 try:
     import typing
+
     from busio import I2C
     from typing_extensions import Literal
 except ImportError:
@@ -138,47 +138,36 @@ class AD7291:
         """
         will get the data register address
         """
-        match polarity:
-            case "low":
-                match channel:
-                    case 0:
-                        self.buf[0] = _CH0_DATA_LOW
-                    case 1:
-                        self.buf[0] = _CH1_DATA_LOW
-                    case 2:
-                        self.buf[0] = _CH2_DATA_LOW
-                    case 3:
-                        self.buf[0] = _CH3_DATA_LOW
-                    case 4:
-                        self.buf[0] = _CH4_DATA_LOW
-                    case 5:
-                        self.buf[0] = _CH5_DATA_LOW
-                    case 6:
-                        self.buf[0] = _CH6_DATA_LOW
-                    case 7:
-                        self.buf[0] = _CH7_DATA_LOW
-                    case 8:
-                        self.buf[0] = _T_SENSE_DATA_LOW
-            case "high":
-                match channel:
-                    case 0:
-                        self.buf[0] = _CH0_DATA_HIGH
-                    case 1:
-                        self.buf[0] = _CH1_DATA_HIGH
-                    case 2:
-                        self.buf[0] = _CH2_DATA_HIGH
-                    case 3:
-                        self.buf[0] = _CH3_DATA_HIGH
-                    case 4:
-                        self.buf[0] = _CH4_DATA_HIGH
-                    case 5:
-                        self.buf[0] = _CH5_DATA_HIGH
-                    case 6:
-                        self.buf[0] = _CH6_DATA_HIGH
-                    case 7:
-                        self.buf[0] = _CH7_DATA_HIGH
-                    case 8:
-                        self.buf[0] = _T_SENSE_DATA_HIGH
+
+        """
+        Circuit python does not support switch case statements, so I'm using a
+        dictionary instead
+        """
+        dict = {
+            "low": {
+                0: _CH0_DATA_LOW,
+                1: _CH1_DATA_LOW,
+                2: _CH2_DATA_LOW,
+                3: _CH3_DATA_LOW,
+                4: _CH4_DATA_LOW,
+                5: _CH5_DATA_LOW,
+                6: _CH6_DATA_LOW,
+                7: _CH7_DATA_LOW,
+                8: _T_SENSE_DATA_LOW,
+            },
+            "high": {
+                0: _CH0_DATA_HIGH,
+                1: _CH1_DATA_HIGH,
+                2: _CH2_DATA_HIGH,
+                3: _CH3_DATA_HIGH,
+                4: _CH4_DATA_HIGH,
+                5: _CH5_DATA_HIGH,
+                6: _CH6_DATA_HIGH,
+                7: _CH7_DATA_HIGH,
+                8: _T_SENSE_DATA_HIGH,
+            },
+        }
+        self.buf[0] = dict[polarity][channel]
 
     def set_channel_upper_limit(self,
                                 channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
@@ -222,7 +211,7 @@ class AD7291:
         with self.i2c_device as i2c:
             i2c.write(self.buf, end=2)
 
-    def get_channel_limits(self, 
+    def get_channel_limits(self,
                            channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8]
                            ) -> tuple:
         """
