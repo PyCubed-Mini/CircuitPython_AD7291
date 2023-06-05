@@ -53,7 +53,8 @@ _CH7_DATA_HIGH = const(0x19)
 _CH7_DATA_LOW = const(0x1A)
 _T_SENSE_DATA_HIGH = const(0x1C)
 _T_SENSE_DATA_LOW = const(0x1D)
-
+_ALERT_A = const(0x1F)
+_ALERT_B = const(0x20)
 
 _DEFAULT_ADDRESS = 0x2F
 
@@ -190,7 +191,41 @@ class AD7291:
 
     @property
     def read_channel_alert(self):
-        pass
+        """
+        Reads from alert register A to get information about the alert
+        that has occured. Contains only information about the voltage
+        in channels, not the temperature sensor.
+
+        CH* HIGH means that the sensor has exceeded the CH*_DATA_HIGH
+        limit on the specified channel.
+
+        CH* LOW means that the sensor has subceeded the CH*_DATA_LOW
+        limit on the specified channel.
+
+        D15         | D14       | D13       | D12       | D11       |
+        -------------------------------------------------------------
+        CH7 HIGH    | CH7 LOW   | CH6 HIGH  | CH6 LOW   | CH5 HIGH  |
+        =============================================================
+        D10         | D9        | D8        | D7        | D6        |
+        -------------------------------------------------------------
+        CH5 LOW     | CH4 HIGH  | CH4 LOW   | CH3 HIGH  | CH3 LOW   |
+        =============================================================
+        D5          | D4        | D3        | D2        | D1        |
+        -------------------------------------------------------------
+        CH2 HIGH    | CH2 LOW   | CH1 HIGH  | CH1 LOW   | CH0 HIGH  |
+        =============================================================
+        D0          |
+        -------------
+        CH0 LOW     |
+        """
+
+        self.buf[0] = _ALERT_A
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        return ((self.buf[0] << 8) + self.buf[1]) & ((1 << 16) - 1)
 
     @property
     def read_temp_alert(self):
