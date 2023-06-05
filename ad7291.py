@@ -39,20 +39,28 @@ _CH0_DATA_LOW = const(0x05)
 _CH0_HYSTERESIS = const(0X06)
 _CH1_DATA_HIGH = const(0x07)
 _CH1_DATA_LOW = const(0x08)
+_CH1_HYSTERESIS = const(0x09)
 _CH2_DATA_HIGH = const(0x0A)
 _CH2_DATA_LOW = const(0x0B)
+_CH2_HYSTERESIS = const(0x0C)
 _CH3_DATA_HIGH = const(0x0D)
 _CH3_DATA_LOW = const(0x0E)
+_CH3_HYSTERESIS = const(0x0F)
 _CH4_DATA_HIGH = const(0x10)
 _CH4_DATA_LOW = const(0x11)
+_CH4_HYSTERESIS = const(0x12)
 _CH5_DATA_HIGH = const(0x13)
 _CH5_DATA_LOW = const(0x14)
+_CH5_HYSTERESIS = const(0x15)
 _CH6_DATA_HIGH = const(0x16)
 _CH6_DATA_LOW = const(0x17)
+_CH6_HYSTERESIS = const(0x18)
 _CH7_DATA_HIGH = const(0x19)
 _CH7_DATA_LOW = const(0x1A)
+_CH7_HYSTERESIS = const(0X1B)
 _T_SENSE_DATA_HIGH = const(0x1C)
 _T_SENSE_DATA_LOW = const(0x1D)
+_T_SENES_HYSTERESIS = const(0X1E)
 
 
 _DEFAULT_ADDRESS = 0x2F
@@ -193,3 +201,9 @@ class AD7291:
             return (4096 - temperature)/4
         else:
             return temperature/4
+
+    def set_channel_low(self, channel: int, value: int) -> None:
+        pass
+
+    def set_channel_high(self, channel: int, value: int) -> None:
+        pass
