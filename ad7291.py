@@ -190,7 +190,7 @@ class AD7291:
             return temperature/4
 
     @property
-    def read_channel_alert(self):
+    def read_channel_alert(self) -> int:
         """
         Reads from alert register A to get information about the alert
         that has occured. Contains only information about the voltage
