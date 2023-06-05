@@ -133,8 +133,11 @@ class AD7291:
         return result & ((i << 8) - 1)
 
     def get_channel(self,
-                          channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
-                          polarity: Literal["low", "high"]):
+                    channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
+                    polarity: Literal["low", "high"]) -> None:
+        """
+        will get the data register address
+        """
         match polarity:
             case "low":
                 match channel:
@@ -180,6 +183,9 @@ class AD7291:
     def set_channel_upper_limit(self,
                                 channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
                                 value: int) -> None:
+        """
+        sets the DATA_HIGH register for the channel you specify.
+        """
         if 0 <= channel <= 8:
             BufferError("invalid channel")
         if 0 <= value <= (1 << 12) - 1:
@@ -198,6 +204,9 @@ class AD7291:
     def set_channel_lower_limit(self,
                                 channel: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8],
                                 value: int) -> None:
+        """
+        sets the DATA_LOW register for the channel you specify.
+        """
         if 0 <= channel <= 8:
             BufferError("invalid channel")
         if 0 <= value <= (1 << 12) - 1:
