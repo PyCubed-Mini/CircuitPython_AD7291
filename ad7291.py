@@ -176,9 +176,9 @@ class AD7291:
         sets the DATA_HIGH register for the channel you specify.
         """
         if 0 <= channel <= 8:
-            BufferError("invalid channel")
+            RuntimeError("invalid channel")
         if 0 <= value <= (1 << 12) - 1:
-            BufferError("invalid limit")
+            RuntimeError("invalid limit")
 
         # get the channel we want to use
         self.get_channel_limit(channel, "high")
@@ -197,9 +197,9 @@ class AD7291:
         sets the DATA_LOW register for the channel you specify.
         """
         if 0 <= channel <= 8:
-            BufferError("invalid channel")
+            RuntimeError("invalid channel")
         if 0 <= value <= (1 << 12) - 1:
-            BufferError("invalid limit")
+            RuntimeError("invalid limit")
 
         # get desired channel
         self.get_channel_limit(channel, "low")
@@ -268,7 +268,7 @@ class AD7291:
         for i in range(0, 2 * self.num_active_channels, 2):
             channel = (self.buf[i] >> 4) & ((1 << 4) - 1)    # D[12:16]
             if not 0 <= channel <= 7:
-                BufferError("Channel returned is not a voltage channel (0-7)")
+                RuntimeError("Channel returned is not a voltage channel (0-7)")
 
             # the conversion from the voltage read
             voltage = (self.buf[i]) & ((1 << 4) - 1)         # D[8:12]
@@ -287,7 +287,7 @@ class AD7291:
         multiple times within a 5ms window.
         """
         if not self.settings >> 7:
-            BufferError("Temperature sensor not enabled")
+            RuntimeError("Temperature sensor not enabled")
 
         self.buf[0] = _T_SENSE_CONVERSION_RESULT
         with self.i2c_device as i2c:
@@ -297,7 +297,7 @@ class AD7291:
 
         channel = (self.buf[0] >> 4) & ((1 << 4) - 1)   # D[12:16]
         if (channel != 8):
-            BufferError("Channel returned is not Temperature Channel (8)")
+            RuntimeError("Channel returned is not Temperature Channel (8)")
 
         temperature = (self.buf[0]) & ((1 << 4) - 1)    # D[8:12]
         temperature << 8                                # shifts
