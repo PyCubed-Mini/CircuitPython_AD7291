@@ -212,7 +212,7 @@ class AD7291:
             BufferError("Channel returned is not Avg Temperature channel")
 
         temperature = self.buf[0] & ((1 << 4) - 1)
-        temperature << 8
+        temperature = temperature << 8
         temperature += self.buf[1]
 
         if temperature > 4096:
