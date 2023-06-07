@@ -152,7 +152,7 @@ class AD7291:
 
             # the conversion from the voltage read
             voltage = (self.buf[i]) & ((1 << 4) - 1)         # D[8:12]
-            voltage << 8                                     # shift to make room
+            voltage = voltage << 8                                     # shift to make room
             voltage += self.buf[i + 1]                       # D[0:8]
             res[int(i/2)] = (channel, voltage)
 
@@ -180,7 +180,7 @@ class AD7291:
             BufferError("Channel returned is not Temperature Channel (8)")
 
         temperature = (self.buf[0]) & ((1 << 4) - 1)    # D[8:12]
-        temperature << 8                                # shifts
+        temperature = temperature << 8                                # shifts
         temperature += self.buf[1]                      # D[0:8]
 
         if temperature > 4096:
