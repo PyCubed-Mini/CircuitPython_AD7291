@@ -53,7 +53,8 @@ _CH7_DATA_HIGH = const(0x19)
 _CH7_DATA_LOW = const(0x1A)
 _T_SENSE_DATA_HIGH = const(0x1C)
 _T_SENSE_DATA_LOW = const(0x1D)
-
+_ALERT_A = const(0x1F)
+_ALERT_B = const(0x20)
 
 _DEFAULT_ADDRESS = 0x2F
 
@@ -187,3 +188,93 @@ class AD7291:
             return (4096 - temperature)/4
         else:
             return temperature/4
+
+    @property
+    def read_channel_alert(self) -> int:
+        """
+        Reads from alert register A to get information about the alert
+        that has occured. Contains only information about the voltage
+        in channels, not the temperature sensor.
+
+        CH* HIGH means that the sensor has exceeded the CH*_DATA_HIGH
+        limit on the specified channel.
+
+        CH* LOW means that the sensor has subceeded the CH*_DATA_LOW
+        limit on the specified channel.
+
+        D15         | D14       | D13       | D12       | D11       |
+        -------------------------------------------------------------
+        CH7 HIGH    | CH7 LOW   | CH6 HIGH  | CH6 LOW   | CH5 HIGH  |
+        =============================================================
+        D10         | D9        | D8        | D7        | D6        |
+        -------------------------------------------------------------
+        CH5 LOW     | CH4 HIGH  | CH4 LOW   | CH3 HIGH  | CH3 LOW   |
+        =============================================================
+        D5          | D4        | D3        | D2        | D1        |
+        -------------------------------------------------------------
+        CH2 HIGH    | CH2 LOW   | CH1 HIGH  | CH1 LOW   | CH0 HIGH  |
+        =============================================================
+        D0          |
+        -------------
+        CH0 LOW     |
+        """
+
+        self.buf[0] = _ALERT_A
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        return ((self.buf[0] << 8) + self.buf[1]) & ((1 << 16) - 1)
+
+    @property
+    def read_temp_alert(self) -> int:
+        """
+        Reads from Alert Register B to get information about the alert
+        that has occured. Only gives information about the temperature
+        sensor.
+
+        TSENSE*_LOW means the average temperature has subceeded the limit
+        set by the TSENSE*_LOW register.
+
+        TSENSE*_HIGH means the average temperature has exceeded the limit
+        set by the TSENSE*_HIGH register.
+
+        D[4-16]     |
+        -------------
+        0           |
+        =====================================================================
+        D3              | D2                | D1            | D0            |
+        ---------------------------------------------------------------------
+        TSENSE_AVG HIGH | TSENSE_AVG LOW    | TSENSE HIGH   | TSENSE LOW    |
+        """
+
+        self.buf[0] = _ALERT_B
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=1)
+
+            i2c.readinto(self.buf, end=2)
+
+        return ((self.buf[0] << 8) + self.buf[1]) & ((1 << 16) - 1)
+
+    @property
+    def clear_alert_registers(self) -> None:
+        self.buf[0] = _COMMAND_REGISTER
+        self.buf[1] = self.channels
+
+        # flip bit D2 of command register to 1
+        self.settings = self.settings ^ (1 << 2)
+        self.buf[2] = self.settings
+
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=3)
+
+        # flip bit D2 back to 0
+        self.settings = self.settings ^ (1 << 2)
+
+        self.buf[0] = _COMMAND_REGISTER
+        self.buf[1] = self.channels
+        self.buf[2] = self.settings
+
+        with self.i2c_device as i2c:
+            i2c.write(self.buf, end=3)
